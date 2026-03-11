@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">StauEnde</string>
+
+    <!-- Input hints -->
+    <string name="hint_origin">From (address or place)</string>
+    <string name="hint_destination">To (address or place)</string>
+
+    <!-- Buttons -->
+    <string name="button_calculate_route">Calculate Route</string>
+
+    <!-- Route info -->
+    <string name="route_address_format">%1$s → %2$s</string>
+    <string name="distance_km">%.1f km</string>
+    <string name="distance_m">%d m</string>
+    <string name="duration_hours_minutes">%1$d h %2$d min</string>
+    <string name="duration_minutes">%d min</string>
+
+    <!-- Traffic messages -->
+    <string name="traffic_clear">Traffic is clear on this route.</string>
+    <string name="traffic_delay_minutes">+%d min delay due to traffic</string>
+
+    <!-- Departure suggestions -->
+    <string name="departure_suggestion">Best departure: %1$s (est. %2$s)</string>
+
+    <!-- Jam summary -->
+    <string name="jam_summary_header">Recurring jams today:</string>
+</resources>

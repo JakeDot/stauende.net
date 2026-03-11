@@ -1,0 +1,5 @@
+<resources>
+    <style name="Base.Theme.StauEnde" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <style name="Theme.StauEnde" parent="Base.Theme.StauEnde" />
+</resources>
