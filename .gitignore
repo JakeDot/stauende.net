@@ -19,6 +19,9 @@
 *.tar.gz
 *.rar
 
+# Allow the Gradle wrapper jar to be tracked
+!gradle/wrapper/gradle-wrapper.jar
+
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
@@ -32,7 +35,7 @@ build/
 app/build/
 
 # Gradle wrapper jar (only the properties file is tracked)
-gradle/wrapper/gradle-wrapper.jar
+# gradle/wrapper/gradle-wrapper.jar
 
 # Android Studio project files
 *.iml
@@ -40,3 +43,6 @@ gradle/wrapper/gradle-wrapper.jar
 captures/
 .externalNativeBuild/
 .cxx/
+
+# Allow APK files in the artifacts directory
+!artifacts/*.apk
