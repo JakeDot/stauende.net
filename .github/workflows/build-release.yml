@@ -10,8 +10,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
 
     steps:
       - name: Checkout code
@@ -36,15 +34,6 @@ jobs:
         run: |
           mkdir -p artifacts
           cp app/build/outputs/apk/release/app-release.apk artifacts/stauende-release.apk
-
-      - name: Commit APK to artifacts directory
-        if: github.event_name == 'push'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add artifacts/stauende-release.apk
-          git diff --cached --quiet || git commit -m "ci: update release APK in artifacts directory [skip ci]"
-          git push
 
       - name: Upload APK as workflow artifact
         uses: actions/upload-artifact@v4
