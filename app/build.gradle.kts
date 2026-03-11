@@ -23,9 +23,19 @@ android {
         buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("keystore/release.jks")
+            storePassword = project.findProperty("RELEASE_STORE_PASSWORD") as? String ?: "stauende123"
+            keyAlias = project.findProperty("RELEASE_KEY_ALIAS") as? String ?: "stauende_release"
+            keyPassword = project.findProperty("RELEASE_KEY_PASSWORD") as? String ?: "stauende123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
