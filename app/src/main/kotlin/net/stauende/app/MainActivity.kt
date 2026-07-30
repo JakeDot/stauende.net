@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val calculator = RouteCalculator(apiKey = BuildConfig.MAPS_API_KEY)
-                return RouteViewModel(calculator) as T
+                return RouteViewModel(application, calculator) as T
             }
         }
     }
