@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StauEnde.net — Nicht schneller fahren. Klüger losfahren.</title>
+<meta name="description" content="StauEnde berechnet, wann dein Stau beginnt und endet, und schlägt vor, ein paar Minuten früher oder später loszufahren, um ihn ganz zu umfahren." />
+<style>
+  :root {
+    --paper: #f1f3f5;
+    --card: #ffffff;
+    --ink: #12151b;
+    --ink-soft: #4a5164;
+    --ink-faint: #6b7183;
+    --line: rgba(18, 21, 27, 0.12);
+    --shadow: rgba(18, 21, 27, 0.14);
+    --amber: #c97e0f;
+    --amber-tint: #fdf1dd;
+    --route: #1f9b81;
+    --route-tint: #e3f6f1;
+    --alert: #c8461f;
+    --alert-tint: #fbe7de;
+    --night: #12151b;
+    --night-card: #1b202b;
+    --night-line: rgba(237, 239, 243, 0.12);
+
+    --font-display: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", "Consolas", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #12151b;
+      --card: #1b202b;
+      --ink: #edeff3;
+      --ink-soft: #c7ccd6;
+      --ink-faint: #8a93a6;
+      --line: rgba(237, 239, 243, 0.12);
+      --shadow: rgba(0, 0, 0, 0.5);
+      --amber: #f2b458;
+      --amber-tint: #322509;
+      --route: #4fe2c2;
+      --route-tint: #0e2b26;
+      --alert: #ff8a63;
+      --alert-tint: #351209;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #12151b;
+    --card: #1b202b;
+    --ink: #edeff3;
+    --ink-soft: #c7ccd6;
+    --ink-faint: #8a93a6;
+    --line: rgba(237, 239, 243, 0.12);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --amber: #f2b458;
+    --amber-tint: #322509;
+    --route: #4fe2c2;
+    --route-tint: #0e2b26;
+    --alert: #ff8a63;
+    --alert-tint: #351209;
+  }
+
+  :root[data-theme="light"] {
+    --paper: #f1f3f5;
+    --card: #ffffff;
+    --ink: #12151b;
+    --ink-soft: #4a5164;
+    --ink-faint: #6b7183;
+    --line: rgba(18, 21, 27, 0.12);
+    --shadow: rgba(18, 21, 27, 0.14);
+    --amber: #c97e0f;
+    --amber-tint: #fdf1dd;
+    --route: #1f9b81;
+    --route-tint: #e3f6f1;
+    --alert: #c8461f;
+    --alert-tint: #fbe7de;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  img, svg { max-width: 100%; display: block; }
+
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--night);
+    background: color-mix(in srgb, var(--night) 92%, transparent);
+    color: #edeff3;
+    border-bottom: 1px solid var(--night-line);
+    backdrop-filter: blur(6px);
+  }
+  .topbar .wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .wordmark {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 0.95rem;
+    letter-spacing: 0.06em;
+    text-decoration: none;
+    color: #edeff3;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+  .wordmark .dot { color: var(--amber); }
+  .topbar nav {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 0.9rem;
+  }
+  .topbar nav a {
+    text-decoration: none;
+    color: #c7ccd6;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+  }
+  .topbar nav a:hover { color: #edeff3; border-color: var(--amber); }
+  .theme-toggle {
+    appearance: none;
+    background: transparent;
+    border: 1px solid var(--night-line);
+    color: #edeff3;
+    border-radius: 999px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .theme-toggle:hover { border-color: var(--amber); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(242, 180, 88, 0.14), transparent 60%),
+      var(--night);
+    color: #edeff3;
+    padding: 72px 0 84px;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin: 0 0 18px;
+  }
+  .hero h1 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-stretch: condensed;
+    letter-spacing: -0.01em;
+    transform-origin: left;
+    font-size: clamp(2.2rem, 6vw, 3.6rem);
+    line-height: 1.06;
+    margin: 0 0 22px;
+    max-width: 14ch;
+    text-wrap: balance;
+  }
+  .hero .lede {
+    font-size: 1.1rem;
+    color: #c7ccd6;
+    max-width: 46ch;
+    margin: 0 0 34px;
+  }
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 56px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 13px 22px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .btn-amber { background: var(--amber); color: #241a05; }
+  .btn-amber:hover { filter: brightness(1.06); }
+  .btn-ghost { border-color: var(--night-line); color: #edeff3; }
+  .btn-ghost:hover { border-color: var(--amber); }
+
+  /* ---------- Split-flap board ---------- */
+  .board {
+    background: #0b0d12;
+    border: 1px solid var(--night-line);
+    border-radius: 14px;
+    padding: 22px 22px 18px;
+    max-width: 640px;
+    box-shadow: 0 30px 60px -20px var(--shadow);
+  }
+  .board-caption {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #6b7183;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .board-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 4px;
+    border-top: 1px solid var(--night-line);
+    font-family: var(--font-mono);
+  }
+  .board-row:first-of-type { border-top: none; }
+  .board-time {
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .board-row[data-state="jam"] .board-time { color: var(--alert); }
+  .board-row[data-state="clear"] .board-time { color: var(--route); }
+  .board-status {
+    text-align: right;
+    font-size: 0.85rem;
+    color: #c7ccd6;
+  }
+  .board-status .num { font-variant-numeric: tabular-nums; color: inherit; }
+  .board-row[data-state="jam"] .board-status .num { color: var(--alert); }
+  .board-row[data-state="clear"] .board-status .num { color: var(--route); }
+
+  /* ---------- Section scaffolding ---------- */
+  section { padding: 84px 0; }
+  .section-head { max-width: 60ch; margin-bottom: 48px; }
+  .section-head .eyebrow { color: var(--amber); }
+  .section-head h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.7rem, 4vw, 2.3rem);
+    letter-spacing: -0.01em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  .section-head p { color: var(--ink-soft); margin: 0; font-size: 1.05rem; }
+
+  /* ---------- Problem ---------- */
+  .problem {
+    background: var(--night);
+    color: #edeff3;
+    padding-top: 0;
+  }
+  .problem .section-head p { color: #a8afbe; }
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--night-line);
+    border: 1px solid var(--night-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .problem-stat {
+    background: #171b23;
+    padding: 28px 24px;
+  }
+  .problem-stat .figure {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 2.1rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--amber);
+  }
+  .problem-stat p {
+    margin: 8px 0 0;
+    color: #a8afbe;
+    font-size: 0.92rem;
+  }
+
+  /* ---------- Features ---------- */
+  .features { background: var(--paper); }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+  .feature-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 26px;
+  }
+  .feature-card .mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 16px;
+  }
+  .feature-card h3 {
+    font-size: 1.08rem;
+    margin: 0 0 8px;
+  }
+  .feature-card p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+  }
+
+  /* ---------- How it works ---------- */
+  .how { background: var(--paper); padding-top: 0; }
+  .how-steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    counter-reset: step;
+  }
+  .how-step {
+    position: relative;
+    padding-top: 44px;
+  }
+  .how-step::before {
+    counter-increment: step;
+    content: counter(step, decimal-leading-zero);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--amber);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+  .how-step h3 { margin: 0 0 8px; font-size: 1.05rem; }
+  .how-step p { margin: 0; color: var(--ink-soft); font-size: 0.94rem; }
+
+  /* ---------- Phone mockup ---------- */
+  .device-section { background: var(--night); color: #edeff3; }
+  .device-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 56px;
+    align-items: center;
+  }
+  .device-copy .section-head { margin-bottom: 24px; }
+  .device-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .device-list li {
+    display: flex;
+    gap: 12px;
+    font-size: 0.95rem;
+    color: #c7ccd6;
+  }
+  .device-list li strong { color: #edeff3; }
+  .device-list .tick { color: var(--route); flex-shrink: 0; }
+
+  .phone {
+    justify-self: center;
+    width: 300px;
+    border-radius: 34px;
+    background: #0b0d12;
+    border: 1px solid var(--night-line);
+    padding: 12px;
+    box-shadow: 0 40px 80px -24px var(--shadow);
+  }
+  .phone-screen {
+    position: relative;
+    border-radius: 24px;
+    overflow: hidden;
+    aspect-ratio: 9 / 18.5;
+    background: linear-gradient(180deg, #1e2530, #171b23 55%, #10141b);
+  }
+  .phone-map-route {
+    position: absolute;
+    inset: 0;
+  }
+  .phone-card {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 12px;
+    box-shadow: 0 10px 24px -8px rgba(0,0,0,0.5);
+    padding: 12px 14px;
+  }
+  .phone-card.input { top: 16px; }
+  .phone-field {
+    font-family: var(--font-body);
+    font-size: 0.68rem;
+    color: var(--ink-faint);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 7px 9px;
+    margin-bottom: 7px;
+  }
+  .phone-field span { color: var(--ink); }
+  .phone-cta {
+    background: var(--amber);
+    color: #241a05;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 7px;
+    padding: 7px;
+    margin-top: 2px;
+  }
+  .phone-card.result { bottom: 14px; }
+  .phone-route-label { font-size: 0.62rem; color: var(--ink-faint); margin-bottom: 6px; }
+  .phone-stats { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .phone-stats b { font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+  .phone-delay { font-size: 0.68rem; color: var(--alert); margin-bottom: 6px; }
+  .phone-suggestion {
+    font-size: 0.68rem;
+    color: var(--route);
+    background: var(--route-tint);
+    border-radius: 6px;
+    padding: 5px 7px;
+    margin-bottom: 6px;
+  }
+  .phone-jams { font-size: 0.62rem; color: var(--ink-faint); line-height: 1.5; }
+
+  /* ---------- CTA ---------- */
+  .cta { background: var(--paper); text-align: left; }
+  .cta-panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .cta-panel h2 {
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .cta-panel p { margin: 0; color: var(--ink-soft); max-width: 46ch; }
+  .cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-outline {
+    border: 1px solid var(--line);
+    color: var(--ink);
+  }
+  .btn-outline:hover { border-color: var(--amber); }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--night);
+    color: #8a93a6;
+    padding: 40px 0;
+    border-top: 1px solid var(--night-line);
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 0.85rem;
+  }
+  footer a { text-decoration: none; color: #c7ccd6; }
+  footer a:hover { color: var(--amber); }
+  footer nav { display: flex; gap: 20px; }
+
+  @media (max-width: 860px) {
+    .device-layout { grid-template-columns: 1fr; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .how-steps { grid-template-columns: 1fr; }
+    .cta-panel { padding: 32px; }
+  }
+  @media (max-width: 560px) {
+    section { padding: 56px 0; }
+    .hero { padding: 48px 0 56px; }
+    .board { padding: 18px 16px 14px; }
+    .board-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .board-status { text-align: left; }
+    .topbar nav span.divider { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="wordmark" href="#top">STAU<span class="dot">·</span>ENDE.NET</a>
+    <nav>
+      <a href="#funktionen">Funktionen</a>
+      <a href="#so-funktionierts">Ablauf</a>
+      <a href="https://github.com/JakeDot/stauende.net">GitHub</a>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Farbschema wechseln">◐</button>
+    </nav>
+  </div>
+</div>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Timing-basiertes Routing</p>
+      <h1>Nicht schneller fahren.<br>Klüger losfahren.</h1>
+      <p class="lede">
+        Die meisten Staus sind keine Überraschung — sie stehen jeden Tag zur selben Zeit am selben Ort.
+        StauEnde erkennt dieses Muster auf deiner Strecke und sagt dir, wann du ein paar Minuten
+        früher oder später losfahren solltest, um ihn ganz zu umfahren.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-amber" href="#so-funktionierts">So funktioniert's</a>
+        <a class="btn btn-ghost" href="https://github.com/JakeDot/stauende.net">Quellcode auf GitHub</a>
+      </div>
+
+      <div class="board" role="img" aria-label="Vergleich: Abfahrt um 07:45 bedeutet 38 Minuten im Stau, Abfahrt um 08:10 bedeutet 21 Minuten freie Fahrt.">
+        <div class="board-caption"><span>Wien Handelskai → Linz Hauptplatz</span><span>Live</span></div>
+        <div class="board-row" data-state="jam">
+          <span class="board-time" data-final="07:45 ABFAHRT">07:45 ABFAHRT</span>
+          <span class="board-status"><span class="num" data-final="38 MIN">38 MIN</span> · STARKER STAU</span>
+        </div>
+        <div class="board-row" data-state="clear">
+          <span class="board-time" data-final="08:10 ABFAHRT">08:10 ABFAHRT</span>
+          <span class="board-status"><span class="num" data-final="21 MIN">21 MIN</span> · FREIE FAHRT</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="problem">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Das Problem</p>
+        <h2>Rush Hour ist berechenbar. Die meisten Apps ignorieren das trotzdem.</h2>
+        <p>Navigations-Apps optimieren den Weg, nicht den Zeitpunkt. Sie schicken dich um den Stau
+          herum, wenn du schon mittendrin steckst — statt dich einfach zwanzig Minuten davor
+          losfahren zu lassen.</p>
+      </div>
+      <div class="problem-grid">
+        <div class="problem-stat">
+          <div class="figure">±30&nbsp;min</div>
+          <p>Zeitfenster, in dem sich die Fahrzeit auf einer typischen Pendelstrecke je nach
+            Abfahrtsminute unterscheiden kann.</p>
+        </div>
+        <div class="problem-stat">
+          <div class="figure">2×</div>
+          <p>täglich wiederkehrende Stauspitzen — morgens und abends, fast immer zur selben Uhrzeit.</p>
+        </div>
+        <div class="problem-stat">
+          <div class="figure">0&nbsp;Umwege</div>
+          <p>StauEnde ändert nicht deine Route. Es ändert nur, wann du sie fährst.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="funktionen">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Funktionen</p>
+        <h2>Vier Bausteine, ein Ziel: nie wieder im vorhersehbaren Stau stehen.</h2>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="mark" style="background:var(--amber-tint)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          </div>
+          <h3>Live-Verkehrsdaten</h3>
+          <p>Jede Route wird mit Echtzeit-Verkehrsdaten berechnet — inklusive Fahrzeit mit und ohne
+            aktuellen Stau, direkt aus der Google-Directions-API.</p>
+        </div>
+        <div class="feature-card">
+          <div class="mark" style="background:var(--route-tint)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--route)" stroke-width="2" stroke-linecap="round"><path d="M4 19c4-10 8 6 12-4M4 19h16"/></svg>
+          </div>
+          <h3>Route live auf der Karte</h3>
+          <p>Die tatsächliche Streckenführung wird aus den Kartendaten gezeichnet — nicht nur ein
+            Strich zwischen Start und Ziel.</p>
+        </div>
+        <div class="feature-card">
+          <div class="mark" style="background:var(--alert-tint)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--alert)" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg>
+          </div>
+          <h3>Persönlicher Stau-Kalender</h3>
+          <p>StauEnde merkt sich, wann auf deiner Strecke regelmäßig Stau herrscht — aufgeschlüsselt
+            nach Wochentag und 30-Minuten-Fenster.</p>
+        </div>
+        <div class="feature-card">
+          <div class="mark" style="background:var(--amber-tint)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><circle cx="12" cy="12" r="4"/></svg>
+          </div>
+          <h3>Abfahrts-Empfehlung</h3>
+          <p>Für die nächsten Stunden zeigt dir die App, zu welcher Minute du am wenigsten Zeit im
+            Stau verlierst.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how" id="so-funktionierts">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Ablauf</p>
+        <h2>Von der Eingabe bis zur Abfahrtsempfehlung in drei Schritten.</h2>
+      </div>
+      <div class="how-steps">
+        <div class="how-step">
+          <h3>Start &amp; Ziel eingeben</h3>
+          <p>Adresse oder Ort eintippen — StauEnde findet die Route und zeigt sie direkt auf der Karte
+            mit Live-Verkehr an.</p>
+        </div>
+        <div class="how-step">
+          <h3>Verkehrslage analysieren</h3>
+          <p>Die App vergleicht Fahrzeit mit und ohne Stau und gleicht sie mit bisher beobachteten
+            Staufenstern auf dieser Strecke ab.</p>
+        </div>
+        <div class="how-step">
+          <h3>Beste Abfahrtszeit erhalten</h3>
+          <p>Du bekommst ein konkretes Zeitfenster vorgeschlagen — plus eine Übersicht der
+            wiederkehrenden Staus, die du damit umfährst.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="device-section">
+    <div class="wrap device-layout">
+      <div class="device-copy">
+        <div class="section-head">
+          <p class="eyebrow">Die App</p>
+          <h2>Eine Oberfläche für unterwegs, nicht für den Schreibtisch.</h2>
+          <p>Karte, Eingabe und Ergebnis passen auf einen Bildschirm — bedienbar mit einer Hand,
+            am besten bevor du losfährst.</p>
+        </div>
+        <ul class="device-list">
+          <li><span class="tick">✓</span><span><strong>Ein Bildschirm.</strong> Route eingeben, Ergebnis lesen, losfahren — kein Menü dazwischen.</span></li>
+          <li><span class="tick">✓</span><span><strong>Kartenfarben mit Bedeutung.</strong> Grün, Gelb, Orange und Rot zeigen Stauintensität auf einen Blick.</span></li>
+          <li><span class="tick">✓</span><span><strong>Gebaut mit Kotlin &amp; Jetpack.</strong> Native Android-App, kein Wrapper.</span></li>
+        </ul>
+      </div>
+
+      <div class="phone" role="img" aria-label="App-Vorschau: Karte mit eingezeichneter Route, Eingabefeldern für Start und Ziel sowie einer Ergebniskarte mit Fahrzeit, Verzögerung und Abfahrtsempfehlung.">
+        <div class="phone-screen">
+          <svg class="phone-map-route" viewBox="0 0 300 620" preserveAspectRatio="xMidYMid slice">
+            <path d="M40 560 C 90 460, 60 380, 140 340 S 250 260, 220 140" fill="none" stroke="#1f9b81" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+            <circle cx="40" cy="560" r="7" fill="#e4572e"/>
+            <circle cx="220" cy="140" r="7" fill="#1f9b81"/>
+          </svg>
+          <div class="phone-card input">
+            <div class="phone-field">Von: <span>Wien, Handelskai</span></div>
+            <div class="phone-field">Nach: <span>Linz, Hauptplatz</span></div>
+            <div class="phone-cta">ROUTE BERECHNEN</div>
+          </div>
+          <div class="phone-card result">
+            <div class="phone-route-label">Wien, Handelskai → Linz, Hauptplatz</div>
+            <div class="phone-stats"><b>184,2 km</b><b>1 h 42 min</b></div>
+            <div class="phone-delay">+18 min Verzögerung durch Stau</div>
+            <div class="phone-suggestion">Beste Abfahrt: 08:10 (ca. 21 min)</div>
+            <div class="phone-jams">Wiederkehrende Staus heute:<br>&nbsp;&nbsp;• 07:30 (+42&nbsp;%)&nbsp;&nbsp;• 16:45 (+35&nbsp;%)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap">
+      <div class="cta-panel">
+        <div>
+          <h2>StauEnde ist quelloffen und im Aufbau.</h2>
+          <p>Es gibt noch keinen Play-Store-Eintrag — aber den vollständigen Quellcode, eine
+            testbare Kotlin-Bibliothek und eine Android-App zum Selberbauen.</p>
+        </div>
+        <div class="cta-actions">
+          <a class="btn btn-amber" href="https://github.com/JakeDot/stauende.net">Repository ansehen</a>
+          <a class="btn btn-outline" href="https://github.com/JakeDot/stauende.net#readme">Dokumentation</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>StauEnde.net — Umfahre den Stau mit Timing, nicht mit Umwegen.</span>
+    <nav>
+      <a href="https://github.com/JakeDot/stauende.net">GitHub</a>
+      <a href="https://github.com/JakeDot/stauende.net/blob/main/LICENSE">Lizenz</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var toggle = document.getElementById('themeToggle');
+    var stored = null;
+    try { stored = localStorage.getItem('stauende-theme'); } catch (e) {}
+    if (stored === 'dark' || stored === 'light') root.setAttribute('data-theme', stored);
+
+    toggle.addEventListener('click', function () {
+      var current = root.getAttribute('data-theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = current ? current === 'dark' : prefersDark;
+      var next = isDark ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('stauende-theme', next); } catch (e) {}
+    });
+  })();
+
+  // Departure-board scramble-to-settle effect.
+  (function () {
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var targets = document.querySelectorAll('.board-time, .board-status .num');
+    if (reduceMotion || !targets.length) return;
+
+    var glyphs = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ·%';
+
+    targets.forEach(function (el, i) {
+      var final = el.getAttribute('data-final') || el.textContent;
+      var frames = 14;
+      var delay = i * 90;
+      var frame = 0;
+
+      setTimeout(function tick() {
+        if (frame >= frames) {
+          el.textContent = final;
+          return;
+        }
+        var progress = frame / frames;
+        var revealCount = Math.floor(final.length * progress);
+        var out = '';
+        for (var c = 0; c < final.length; c++) {
+          if (final[c] === ' ' || c < revealCount) {
+            out += final[c];
+          } else {
+            out += glyphs[Math.floor(Math.random() * glyphs.length)];
+          }
+        }
+        el.textContent = out;
+        frame++;
+        setTimeout(tick, 45);
+      }, delay);
+    });
+  })();
+</script>
+
+</body>
+</html>
