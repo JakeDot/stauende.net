@@ -14,7 +14,10 @@ kotlin {
 // is built standalone (see README / CI usage).
 
 dependencies {
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // api, not implementation: RouteCalculator's public constructor takes an
+    // OkHttpClient parameter, so consumers (e.g. :app) need this type on
+    // their own compile classpath too, not just :core's internal one.
+    api("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.1")
 
     testImplementation("junit:junit:4.13.2")
