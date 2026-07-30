@@ -17,6 +17,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.color.MaterialColors
@@ -190,11 +191,18 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             best.endAddress
         )
 
-        // Draw polyline markers on the map for all returned routes.
+        // Draw the decoded route path and endpoint markers for all returned routes.
         googleMap?.let { map ->
             map.clear()
+            val bounds = LatLngBounds.Builder()
+            var hasPoints = false
             routes.forEachIndexed { index, route ->
-                drawRouteOnMap(map, route, isPrimary = index == 0)
+                if (drawRouteOnMap(map, route, isPrimary = index == 0, bounds)) {
+                    hasPoints = true
+                }
+            }
+            if (hasPoints) {
+                map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds.build(), MAP_BOUNDS_PADDING_PX))
             }
         }
     }
@@ -209,32 +217,55 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     // Map drawing
     // ------------------------------------------------------------------
 
-    private fun drawRouteOnMap(map: GoogleMap, route: RouteOption, isPrimary: Boolean) {
-        // For a production app, decode the encoded polyline from the API response.
-        // Here we place start / end markers using the addresses as a visual cue.
+    /** Draws [route] on [map], extending [bounds] with every plotted point. Returns true if anything was drawn. */
+    private fun drawRouteOnMap(
+        map: GoogleMap,
+        route: RouteOption,
+        isPrimary: Boolean,
+        bounds: LatLngBounds.Builder
+    ): Boolean {
         val color = if (isPrimary) {
             MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
         } else {
             MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorSecondary)
         }
-
-        // Geocode the addresses to LatLng for the demo. In production, use the
-        // location endpoints returned by the Directions API (start_location / end_location).
         val markerHue = if (isPrimary) BitmapDescriptorFactory.HUE_RED
         else BitmapDescriptorFactory.HUE_AZURE
 
+        val pathPoints = route.polyline.map { LatLng(it.latitude, it.longitude) }
+        if (pathPoints.isNotEmpty()) {
+            map.addPolyline(
+                PolylineOptions()
+                    .addAll(pathPoints)
+                    .color(color)
+                    .width(if (isPrimary) PRIMARY_ROUTE_WIDTH_PX else SECONDARY_ROUTE_WIDTH_PX)
+            )
+            pathPoints.forEach { bounds.include(it) }
+            return true
+        }
+
+        // Fall back to the leg's start/end coordinates if no polyline geometry is available.
+        val start = route.startLat to route.startLng
+        val end = route.endLat to route.endLng
+        if (start == 0.0 to 0.0 && end == 0.0 to 0.0) return false
+
+        val startLatLng = LatLng(start.first, start.second)
+        val endLatLng = LatLng(end.first, end.second)
         map.addMarker(
             MarkerOptions()
                 .title(route.startAddress)
                 .icon(BitmapDescriptorFactory.defaultMarker(markerHue))
-                .position(LatLng(0.0, 0.0)) // placeholder — real apps use leg.startLocation
+                .position(startLatLng)
         )
         map.addMarker(
             MarkerOptions()
                 .title(route.endAddress)
                 .icon(BitmapDescriptorFactory.defaultMarker(markerHue))
-                .position(LatLng(0.0, 0.0)) // placeholder
+                .position(endLatLng)
         )
+        bounds.include(startLatLng)
+        bounds.include(endLatLng)
+        return true
     }
 
     // ------------------------------------------------------------------
@@ -276,5 +307,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 sb.append("\n  • ${jam.label}  (+${jam.delayPercent} %)")
             }
         return sb.toString()
+    }
+
+    companion object {
+        private const val PRIMARY_ROUTE_WIDTH_PX = 12f
+        private const val SECONDARY_ROUTE_WIDTH_PX = 8f
+        private const val MAP_BOUNDS_PADDING_PX = 96
     }
 }

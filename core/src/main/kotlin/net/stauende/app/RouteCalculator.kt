@@ -85,7 +85,12 @@ class RouteCalculator(
                 startAddress = leg.startAddress,
                 endAddress = leg.endAddress,
                 steps = leg.steps,
-                warnings = route.warnings
+                warnings = route.warnings,
+                startLat = leg.startLocation.lat,
+                startLng = leg.startLocation.lng,
+                endLat = leg.endLocation.lat,
+                endLng = leg.endLocation.lng,
+                polyline = PolylineDecoder.decode(route.overviewPolyline.points)
             )
         }.filterNotNull()
     }

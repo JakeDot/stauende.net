@@ -24,7 +24,13 @@ data class GeocodedWaypoint(
 data class Route(
     val summary: String = "",
     val legs: List<Leg> = emptyList(),
-    val warnings: List<String> = emptyList()
+    val warnings: List<String> = emptyList(),
+    @Json(name = "overview_polyline") val overviewPolyline: OverviewPolyline = OverviewPolyline()
+)
+
+@JsonClass(generateAdapter = true)
+data class OverviewPolyline(
+    val points: String = ""
 )
 
 @JsonClass(generateAdapter = true)
@@ -34,7 +40,15 @@ data class Leg(
     @Json(name = "duration_in_traffic") val durationInTraffic: TextValue = TextValue(),
     @Json(name = "start_address") val startAddress: String = "",
     @Json(name = "end_address") val endAddress: String = "",
+    @Json(name = "start_location") val startLocation: LatLngValue = LatLngValue(),
+    @Json(name = "end_location") val endLocation: LatLngValue = LatLngValue(),
     val steps: List<Step> = emptyList()
+)
+
+@JsonClass(generateAdapter = true)
+data class LatLngValue(
+    val lat: Double = 0.0,
+    val lng: Double = 0.0
 )
 
 @JsonClass(generateAdapter = true)
@@ -66,7 +80,13 @@ data class RouteOption(
     val startAddress: String,
     val endAddress: String,
     val steps: List<Step>,
-    val warnings: List<String>
+    val warnings: List<String>,
+    val startLat: Double = 0.0,
+    val startLng: Double = 0.0,
+    val endLat: Double = 0.0,
+    val endLng: Double = 0.0,
+    /** Decoded path geometry for drawing the route on a map. */
+    val polyline: List<GeoPoint> = emptyList()
 ) {
     /** Extra delay caused by traffic compared to free-flow travel time. */
     val trafficDelaySeconds: Int

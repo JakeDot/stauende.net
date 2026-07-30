@@ -54,6 +54,11 @@ class RouteCalculatorTest {
         assertEquals(9000, route.durationInTrafficSeconds)
         assertEquals(1800, route.trafficDelaySeconds)
         assertTrue(route.hasSignificantTraffic)
+        assertEquals(52.5200, route.startLat, 1e-4)
+        assertEquals(13.4050, route.startLng, 1e-4)
+        assertEquals(53.5511, route.endLat, 1e-4)
+        assertEquals(9.9937, route.endLng, 1e-4)
+        assertEquals(3, route.polyline.size)
     }
 
     @Test(expected = RouteCalculationException::class)
@@ -123,9 +128,12 @@ class RouteCalculatorTest {
                       "duration_in_traffic": {"text": "2 hours 30 min", "value": 9000},
                       "start_address": "Berlin, Germany",
                       "end_address": "Hamburg, Germany",
+                      "start_location": {"lat": 52.5200, "lng": 13.4050},
+                      "end_location": {"lat": 53.5511, "lng": 9.9937},
                       "steps": []
                     }
-                  ]
+                  ],
+                  "overview_polyline": {"points": "_p~iF~ps|U_ulLnnqC_mqNvxq`@"}
                 }
               ]
             }
