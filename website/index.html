@@ -485,7 +485,21 @@
     margin: 0 0 10px;
     text-wrap: balance;
   }
-  .cta-panel p { margin: 0; color: var(--ink-soft); max-width: 46ch; }
+  .cta-desc { margin: 8px 0 0; color: var(--ink-soft); max-width: 46ch; }
+  .cta-panel code {
+    font-family: var(--font-mono);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.85em;
+  }
+  .build-meta {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+  .build-meta .sha { color: var(--route); }
   .cta-actions { display: flex; gap: 12px; flex-wrap: wrap; }
   .btn-outline {
     border: 1px solid var(--line);
@@ -713,13 +727,16 @@
     <div class="wrap">
       <div class="cta-panel">
         <div>
-          <h2>StauEnde ist quelloffen und im Aufbau.</h2>
-          <p>Es gibt noch keinen Play-Store-Eintrag — aber den vollständigen Quellcode, eine
-            testbare Kotlin-Bibliothek und eine Android-App zum Selberbauen.</p>
+          <p class="eyebrow">Download</p>
+          <h2>Der aktuellste Build — direkt aus main.</h2>
+          <p class="cta-desc">Jeder Push nach <code>main</code> baut automatisch eine neue Debug-APK
+            und veröffentlicht sie hier. Es gibt noch keinen Play-Store-Eintrag — das hier ist der
+            unveränderte Build zum Testen.</p>
+          <p class="build-meta" id="buildMeta" hidden></p>
         </div>
         <div class="cta-actions">
-          <a class="btn btn-amber" href="https://github.com/JakeDot/stauende.net">Repository ansehen</a>
-          <a class="btn btn-outline" href="https://github.com/JakeDot/stauende.net#readme">Dokumentation</a>
+          <a class="btn btn-amber" href="downloads/stauende-latest.apk">APK herunterladen</a>
+          <a class="btn btn-outline" href="https://github.com/JakeDot/stauende.net">Quellcode ansehen</a>
         </div>
       </div>
     </div>
@@ -789,6 +806,19 @@
         setTimeout(tick, 45);
       }, delay);
     });
+  })();
+
+  // Build metadata, written by the deploy workflow alongside the APK.
+  // Absent during local preview — the download button then simply 404s.
+  (function () {
+    var meta = document.getElementById('buildMeta');
+    fetch('downloads/build-info.json', { cache: 'no-store' })
+      .then(function (res) { if (!res.ok) throw new Error('no build-info'); return res.json(); })
+      .then(function (info) {
+        meta.innerHTML = 'Build <span class="sha">' + info.shortCommit + '</span> · ' + info.builtAt;
+        meta.hidden = false;
+      })
+      .catch(function () { /* no deployed build yet — leave hidden */ });
   })();
 </script>
 

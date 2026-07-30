@@ -6,9 +6,12 @@ kotlin {
     jvmToolchain(21)
 }
 
-repositories {
-    mavenCentral()
-}
+// No repositories {} block here on purpose: when :core is configured as
+// part of the root multi-project build (e.g. because :app depends on it),
+// the root's FAIL_ON_PROJECT_REPOS policy forbids project-level repository
+// declarations. Repositories come from the root's dependencyResolutionManagement
+// in that case, and from this module's own settings.gradle.kts when :core
+// is built standalone (see README / CI usage).
 
 dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")

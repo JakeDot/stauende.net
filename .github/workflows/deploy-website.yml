@@ -1,0 +1,117 @@
+name: Build & deploy website
+
+# Publishes website/ to GitHub Pages on every push to main, bundling a
+# freshly built debug APK so the site always offers the latest build.
+# Requires the repo's Pages source to be set to "GitHub Actions" once
+# under Settings -> Pages.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test-core:
+    name: Test core module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: gradle test (:core)
+        # core/ has its own settings.gradle.kts so it can be built as a
+        # standalone Kotlin/JVM project (see core/build.gradle.kts) — invoke
+        # it via --project-dir rather than ./gradlew :core:test, which would
+        # hit the root build's FAIL_ON_PROJECT_REPOS repository policy.
+        run: ./gradlew --project-dir core test --console=plain
+
+  build-app:
+    name: Build debug APK
+    needs: test-core
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.meta.outputs.short_sha }}
+      built_at: ${{ steps.meta.outputs.built_at }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build metadata
+        id: meta
+        run: |
+          echo "short_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "built_at=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+      - name: gradle assembleDebug (:app)
+        run: ./gradlew :app:assembleDebug --console=plain
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+
+  publish-site:
+    name: Publish site + latest build
+    needs: build-app
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-debug-apk
+          path: dist-apk
+
+      - name: Assemble Pages site
+        run: |
+          mkdir -p _site/downloads
+          cp -r website/. _site/
+          cp dist-apk/app-debug.apk _site/downloads/stauende-latest.apk
+          cat > _site/downloads/build-info.json <<JSON
+          {
+            "commit": "${{ github.sha }}",
+            "shortCommit": "${{ needs.build-app.outputs.short_sha }}",
+            "builtAt": "${{ needs.build-app.outputs.built_at }}",
+            "runId": "${{ github.run_id }}",
+            "runUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }
+          JSON
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: publish-site
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
